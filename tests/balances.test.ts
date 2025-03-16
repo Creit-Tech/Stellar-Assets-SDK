@@ -14,36 +14,35 @@ import {
 import { StellarAssetsSdk } from "../src/stellar-assets-sdk.ts";
 import type { IBalanceResult } from "../src/interfaces.ts";
 
+const XlmContract: Contract = new Contract("CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA");
+const UsdcContract: Contract = new Contract("CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75");
+const account: Account = new Account("GBAIA5U6E3FSRUW55AXACIVGX2QR5JYAS74OWLED3S22EGXVYEHPLGPA", "0");
+const rpcUrl: string = "https://mainnet.sorobanrpc.com";
+const sdk: StellarAssetsSdk = new StellarAssetsSdk({ rpcUrl });
 
-describe("Test method 'balance'", () => {
-  const XlmContract: Contract = new Contract("CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA");
-  const UsdcContract: Contract = new Contract("CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75");
-  const account: Account = new Account("GBAIA5U6E3FSRUW55AXACIVGX2QR5JYAS74OWLED3S22EGXVYEHPLGPA", "0");
-  const rpcUrl: string = "https://mainnet.sorobanrpc.com";
-  const sdk: StellarAssetsSdk = new StellarAssetsSdk({ rpcUrl });
+async function simTx(
+  contract: Contract,
+  method: string,
+  args: xdr.ScVal[],
+): Promise<rpc.Api.SimulateTransactionSuccessResponse> {
+  const tx: Transaction = new TransactionBuilder(account, {
+    networkPassphrase: Networks.PUBLIC,
+    fee: "100000",
+  })
+    .setTimeout(0)
+    .addOperation(contract.call(method, ...args))
+    .build();
 
-  async function simTx(
-    contract: Contract,
-    method: string,
-    args: xdr.ScVal[],
-  ): Promise<rpc.Api.SimulateTransactionSuccessResponse> {
-    const tx: Transaction = new TransactionBuilder(account, {
-      networkPassphrase: Networks.PUBLIC,
-      fee: "100000",
-    })
-      .setTimeout(0)
-      .addOperation(contract.call(method, ...args))
-      .build();
+  const sim = await new rpc.Server(rpcUrl).simulateTransaction(tx);
 
-    const sim = await new rpc.Server(rpcUrl).simulateTransaction(tx);
-
-    if (rpc.Api.isSimulationError(sim)) {
-      throw { message: "Simulation failed", events: sim.events };
-    }
-
-    return sim as rpc.Api.SimulateTransactionSuccessResponse;
+  if (rpc.Api.isSimulationError(sim)) {
+    throw { message: "Simulation failed", events: sim.events };
   }
 
+  return sim as rpc.Api.SimulateTransactionSuccessResponse;
+}
+
+describe("Test method 'balance'", () => {
   it("should fetch the native balance owned by a Stellar account", async (): Promise<void> => {
     const simBalance: bigint = await simTx(XlmContract, "balance", [
       new Address(account.accountId()).toScVal(),
@@ -97,5 +96,23 @@ describe("Test method 'balance'", () => {
 
     const result: IBalanceResult = await sdk.balance(usdxUsdcPool, contractHolder);
     assertEquals(result.balance.amount, simBalance);
+  });
+});
+
+describe("Test method 'balances", () => {
+  it("should fetch the correct balances for multiple accounts and contracts", async () => {
+    const balances: IBalanceResult[] = await sdk.balances([{
+      contractIds: [XlmContract.contractId(), UsdcContract.toString()],
+      addresses: [account.accountId(), XlmContract.contractId(), UsdcContract.toString()],
+    }]);
+
+    for (const { contract, address, balance } of balances) {
+      const simBalance: bigint = await simTx(new Contract(contract), "balance", [
+        new Address(address).toScVal(),
+      ])
+        .then((sim) => scValToBigInt(sim.result!.retval));
+
+      assertEquals(simBalance, balance.amount);
+    }
   });
 });

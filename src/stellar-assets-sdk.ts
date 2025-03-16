@@ -8,9 +8,10 @@ import {
   scValToNative,
   StrKey,
   TransactionBuilder,
-  xdr,
+  type xdr,
 } from "@stellar/stellar-sdk";
 import type { IBalanceResult } from "./interfaces.ts";
+import { generateBalanceLedgerKeys, parseBalanceLedgerKeys } from "./utils.ts";
 
 const SIMULATION_ACCOUNT: string = "GALAXYVOIDAOPZTDLHILAJQKCVVFMD4IKLXLSZV5YHO7VY74IWZILUTO";
 
@@ -50,102 +51,82 @@ export class StellarAssetsSdk {
     targets.forEach((target) =>
       response.set(target.toString(), {
         address: target.toString(),
+        contract: contractId,
         balance: { amount: 0n, authorized: false, clawback: false },
       })
     );
 
-    const ledgerKeys: xdr.LedgerKey[] = targets.map(
-      (target: Address): xdr.LedgerKey => {
-        if (asset instanceof Asset && target.toString().charAt(0) === "G") {
-          if (asset.isNative()) {
-            return xdr.LedgerKey.account(
-              new xdr.LedgerKeyAccount({
-                accountId: xdr.PublicKey.publicKeyTypeEd25519(StrKey.decodeEd25519PublicKey(target.toString())),
-              }),
-            );
-          } else {
-            return xdr.LedgerKey.trustline(
-              new xdr.LedgerKeyTrustLine({
-                accountId: xdr.PublicKey.publicKeyTypeEd25519(StrKey.decodeEd25519PublicKey(target.toString())),
-                asset: asset.toTrustLineXDRObject(),
-              }),
-            );
-          }
-        } else {
-          return xdr.LedgerKey.contractData(
-            new xdr.LedgerKeyContractData({
-              contract: new Address(contractId).toScAddress(),
-              key: xdr.ScVal.scvVec([
-                xdr.ScVal.scvSymbol("Balance"),
-                target.toScVal(),
-              ]),
-              durability: xdr.ContractDataDurability.persistent(),
-            }),
-          );
-        }
-      },
-    );
+    const ledgerKeys: xdr.LedgerKey[] = generateBalanceLedgerKeys({
+      asset,
+      contractId,
+      targets,
+    });
 
     const ledgerKeysResponse: rpc.Api.GetLedgerEntriesResponse = await this.rpc.getLedgerEntries(...ledgerKeys);
 
-    ledgerKeysResponse.entries.forEach(
-      (entry: rpc.Api.LedgerEntryResult) => {
-        switch (entry.val.switch().name) {
-          case "account": {
-            const address: string = StrKey.encodeEd25519PublicKey(entry.val.account().accountId().ed25519());
-            response.set(address, {
-              address,
-              balance: {
-                clawback: false,
-                authorized: true,
-                amount: entry.val.account().balance().toBigInt(),
-              },
-            });
-            break;
-          }
+    const balances: IBalanceResult[] = parseBalanceLedgerKeys({
+      entries: ledgerKeysResponse.entries,
+      network: this.networkPassphrase,
+    });
 
-          case "trustline": {
-            const address: string = StrKey.encodeEd25519PublicKey(entry.val.trustLine().accountId().ed25519());
-            response.set(address, {
-              address,
-              balance: {
-                clawback: false,
-                authorized: true,
-                amount: entry.val.trustLine().balance().toBigInt(),
-              },
-            });
-            break;
-          }
-          case "contractData": {
-            const address: string = scValToNative(entry.key.contractData().key())[1];
-            let balance = scValToNative(entry.val.contractData().val());
-
-            if (typeof balance === "bigint") {
-              balance = {
-                clawback: false,
-                authorized: true,
-                amount: balance,
-              };
-            } else {
-              balance = {
-                clawback: balance.clawback || false,
-                authorized: balance.clawback || true,
-                amount: balance.amount,
-              };
-            }
-
-            response.set(address, { address, balance });
-            break;
-          }
-
-          default:
-            throw new Error(`Entry type: ${entry.val.switch().name} is not supported.`);
-        }
-      },
-    );
+    for (const balance of balances) {
+      response.set(balance.address, balance);
+    }
 
     const values: IBalanceResult[] = response.values().toArray();
     return Array.isArray(addresses) ? values : values[0];
+  }
+
+  /**
+   * An "extension" to the `balance` method, this one accepts an array with the contracts ids and target addresses instead of just one contract like with the `balance` method.
+   * This method is useful for apps that need to track multiple balances for multiple accounts, for example: A wallet.
+   *
+   * @param targets An array with objects that represent the batches of accounts and contracts we want to fetch
+   */
+  async balances(
+    targets: Array<{ contractIds: string[]; addresses: Array<string | Address> }>,
+  ): Promise<IBalanceResult[]> {
+    // The Map key is `contractId_address`
+    const response: Map<string, IBalanceResult> = new Map<string, IBalanceResult>();
+
+    const ledgerKeys: xdr.LedgerKey[] = [];
+    for (const target of targets) {
+      for (const contractId of target.contractIds) {
+        const asset: Asset | Contract = await this.getAsset(contractId);
+
+        target.addresses.forEach((address) =>
+          response.set(`${contractId}_${address}`, {
+            address: address.toString(), // The `.toString()` method includes both cases
+            contract: contractId,
+            balance: { amount: 0n, authorized: false, clawback: false },
+          })
+        );
+
+        const keys: xdr.LedgerKey[] = generateBalanceLedgerKeys({
+          targets: target.addresses.map(
+            (address: string | Address) => typeof address === "string" ? new Address(address) : address,
+          ),
+          contractId,
+          asset,
+        });
+        for (const key of keys) {
+          ledgerKeys.push(key);
+        }
+      }
+    }
+
+    const ledgerKeysResponse: rpc.Api.GetLedgerEntriesResponse = await this.rpc.getLedgerEntries(...ledgerKeys);
+
+    const balances: IBalanceResult[] = parseBalanceLedgerKeys({
+      entries: ledgerKeysResponse.entries,
+      network: this.networkPassphrase,
+    });
+
+    for (const balance of balances) {
+      response.set(`${balance.contract}_${balance.address}`, balance);
+    }
+
+    return response.values().toArray();
   }
 
   /**
