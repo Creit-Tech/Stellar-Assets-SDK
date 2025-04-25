@@ -12,9 +12,5 @@ export interface IBalanceResult {
   /**
    * The balance held by the `address` in this `contract`
    */
-  balance: {
-    amount: bigint;
-    authorized: boolean;
-    clawback: boolean;
-  };
+  balance: bigint;
 }

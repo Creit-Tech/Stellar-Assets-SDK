@@ -1,5 +1,14 @@
-import { Address, Asset, Contract, Networks, rpc, scValToNative, StrKey, xdr } from "@stellar/stellar-sdk";
-import type { IBalanceResult } from "./interfaces.ts";
+import {
+  Address,
+  Asset,
+  type Contract,
+  type Networks,
+  type rpc,
+  scValToNative,
+  StrKey,
+  xdr,
+} from "@stellar/stellar-sdk";
+import type { IBalanceResult } from "./types.ts";
 
 export function generateBalanceLedgerKeys(params: {
   asset: Asset | Contract;

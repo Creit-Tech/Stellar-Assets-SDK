@@ -11,14 +11,14 @@ import {
   TransactionBuilder,
   type xdr,
 } from "@stellar/stellar-sdk";
-import { StellarAssetsSdk } from "../src/stellar-assets-sdk.ts";
-import type { IBalanceResult } from "../src/interfaces.ts";
+import { Sdk } from "../src/sdk.ts";
+import type { IBalanceResult } from "../src/types.ts";
 
 const XlmContract: Contract = new Contract("CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA");
 const UsdcContract: Contract = new Contract("CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75");
 const account: Account = new Account("GBAIA5U6E3FSRUW55AXACIVGX2QR5JYAS74OWLED3S22EGXVYEHPLGPA", "0");
 const rpcUrl: string = "https://mainnet.sorobanrpc.com";
-const sdk: StellarAssetsSdk = new StellarAssetsSdk({ rpcUrl });
+const sdk: Sdk = new Sdk({ rpcUrl });
 
 async function simTx(
   contract: Contract,
@@ -54,7 +54,7 @@ describe("Test method 'balance'", () => {
       account.accountId(),
     );
 
-    assertEquals(result.balance.amount, simBalance);
+    assertEquals(result.balance, simBalance);
   });
 
   it("should fetch the non-native balance owned by a stellar account", async (): Promise<void> => {
@@ -68,7 +68,7 @@ describe("Test method 'balance'", () => {
       account.accountId(),
     );
 
-    assertEquals(result.balance.amount, simBalance);
+    assertEquals(result.balance, simBalance);
   });
 
   it("should fetch the native balance owned by a soroban contract", async (): Promise<void> => {
@@ -82,7 +82,7 @@ describe("Test method 'balance'", () => {
       XlmContract.contractId(),
     );
 
-    assertEquals(result.balance.amount, simBalance);
+    assertEquals(result.balance, simBalance);
   });
 
   it("should fetch the soroban asset balance owned by a soroban contract", async (): Promise<void> => {
@@ -95,16 +95,19 @@ describe("Test method 'balance'", () => {
       .then((sim) => scValToBigInt(sim.result!.retval));
 
     const result: IBalanceResult = await sdk.balance(usdxUsdcPool, contractHolder);
-    assertEquals(result.balance.amount, simBalance);
+    assertEquals(result.balance, simBalance);
   });
 });
 
 describe("Test method 'balances", () => {
   it("should fetch the correct balances for multiple accounts and contracts", async () => {
+    const tick: number = performance.now();
     const balances: IBalanceResult[] = await sdk.balances([{
       contractIds: [XlmContract.contractId(), UsdcContract.toString()],
       addresses: [account.accountId(), XlmContract.contractId(), UsdcContract.toString()],
     }]);
+    const tock: number = performance.now();
+    console.log(`Fetching 6 balances took: ${(tock - tick).toFixed(2)}ms`);
 
     for (const { contract, address, balance } of balances) {
       const simBalance: bigint = await simTx(new Contract(contract), "balance", [
@@ -112,7 +115,7 @@ describe("Test method 'balances", () => {
       ])
         .then((sim) => scValToBigInt(sim.result!.retval));
 
-      assertEquals(simBalance, balance.amount);
+      assertEquals(simBalance, balance);
     }
   });
 });

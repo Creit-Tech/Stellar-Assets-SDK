@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file. See
 [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## 0.2.0 (2025-04-25)
+
+### Add
+
+- Add new dependency `@creit-tech/stellar-router-sdk`.
+
+### Change
+
+- Change the IBalanceResult so its `balance` value is just the amount instead of including both `authorized` and
+  `clawback`.
+- Move from getting the keys and instead use
+
 ### 0.1.0 (2025-03-16)
 
 ### Add
@@ -10,7 +22,7 @@ All notable changes to this project will be documented in this file. See
 - Add the method `balances` to allow fetching multiple balances from multiple accounts and multiple contracts at the
   same time
 
-### 0.0.1 (2025-03-15)
+## 0.0.1 (2025-03-15)
 
 ### Add
 
