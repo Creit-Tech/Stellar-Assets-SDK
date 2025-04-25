@@ -11,14 +11,14 @@ import {
   TransactionBuilder,
   type xdr,
 } from "@stellar/stellar-sdk";
-import { Sdk } from "../src/sdk.ts";
+import { StellarAssetsSdk } from "../src/sdk.ts";
 import type { IBalanceResult } from "../src/types.ts";
 
 const XlmContract: Contract = new Contract("CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA");
 const UsdcContract: Contract = new Contract("CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75");
 const account: Account = new Account("GBAIA5U6E3FSRUW55AXACIVGX2QR5JYAS74OWLED3S22EGXVYEHPLGPA", "0");
 const rpcUrl: string = "https://mainnet.sorobanrpc.com";
-const sdk: Sdk = new Sdk({ rpcUrl });
+const sdk: StellarAssetsSdk = new StellarAssetsSdk({ rpcUrl });
 
 async function simTx(
   contract: Contract,
