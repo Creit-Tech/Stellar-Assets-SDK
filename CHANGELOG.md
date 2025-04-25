@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## 0.2.1 (2025-04-25)
+
+### Change
+
+- Bring back the `StellarAssetsSdk` name for the SDK's class that was automatically changed.
+- Update README.md and github action so it only publish with new tags instead of pushes to the main branch
+
 ## 0.2.0 (2025-04-25)
 
 ### Add

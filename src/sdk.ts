@@ -2,7 +2,7 @@ import { Address, rpc, scValToNative } from "@stellar/stellar-sdk";
 import { type Invocation, StellarRouterSdk } from "@creit-tech/stellar-router-sdk";
 import type { IBalanceResult } from "./types.ts";
 
-export class Sdk {
+export class StellarAssetsSdk {
   routerSdk: StellarRouterSdk;
   rpc: rpc.Server;
 

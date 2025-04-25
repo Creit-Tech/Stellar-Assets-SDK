@@ -5,15 +5,15 @@ A library to handle all kinds of Stellar assets easily on the Soroban smart cont
 ### Why making this SDK?
 
 Currently, if you want to get the balance of multiple addresses for multiple assets (something we need to do in for
-example xBull Wallet), you will need to check if you need to get three different types of ledger keys, and based on the
-value in those ledgers you will need to decide how to parse the value based on the type of data so you can get the
-correct balance. An option is using simulations but because our wallet handles multiple accounts with multiple assets
-that's just not efficient... And so since we are repeating this over and over across all of our apps, we decided to just
-make a simple library for that.
+example xBull Wallet), you will need to either do multiple simulations or getting the ledger keys for each one of them,
+and so since we are repeating this over and over across all of our apps, we decided to just make a simple library for
+that.
 
 Some people might say "why not using a service for fetching those balances?"... Well, because our wallets are free to
 use and open source, we don't make money from them directly and so we need to do stuffs without relying on paying a
 third party. Plus we don't think it makes sense to pay for such a basic task as getting a simple balance.
+
+Besides getting balances, we will probably be adding more features to this SDK that are related to using assets.
 
 ## Installing the library
 
