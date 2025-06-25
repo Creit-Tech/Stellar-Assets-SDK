@@ -120,7 +120,7 @@ export function parseBalanceLedgerKeys(params: {
             case "assetTypeCreditAlphanum12": {
               const assetXdr: xdr.AlphaNum4 | xdr.AlphaNum12 = val.asset().value() as (xdr.AlphaNum4 | xdr.AlphaNum12);
               const asset: Asset = new Asset(
-                assetXdr.assetCode().toString("utf8"),
+                assetXdr.assetCode().toString("utf8").replace(new RegExp('\0', 'g'), ''),
                 StrKey.encodeEd25519PublicKey(assetXdr.issuer().ed25519()),
               );
               contract = asset.contractId(params.network);

@@ -77,24 +77,6 @@ export class StellarAssetsSdk {
       }
     }
 
-    // while (targets.length > 0) {
-    //   // We use chunks of 25 balances to avoid hitting simulation limits
-    //   const currentTargets: Address[] = targets.splice(0, 25);
-    //   const balancesResult: bigint[] = await this.routerSdk.simResult(currentTargets.map((target) => ({
-    //     contract: contractId,
-    //     method: "balance",
-    //     args: [target.toScVal()],
-    //   } satisfies Invocation)));
-    //
-    //   for (let i = 0; i < balancesResult.length; i++) {
-    //     balances.push({
-    //       contract: contractId.toString(),
-    //       address: currentTargets[i].toString(),
-    //       balance: balancesResult[i],
-    //     });
-    //   }
-    // }
-
     return Array.isArray(addresses) ? balances : balances[0];
   }
 
