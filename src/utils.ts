@@ -11,44 +11,52 @@ import {
 import type { IBalanceResult } from "./types.ts";
 
 export function generateBalanceLedgerKeys(params: {
-  asset: Asset | Contract;
-  contractId: string;
+  networks: Networks;
   targets: Address[];
+  assets: Array<Asset | Contract>;
 }): xdr.LedgerKey[] {
-  return params.targets.map(
-    (target: Address): xdr.LedgerKey => {
-      if (params.asset instanceof Asset && target.toString().charAt(0) === "G") {
-        if (params.asset.isNative()) {
-          return xdr.LedgerKey.account(
+  const results: xdr.LedgerKey[] = [];
+
+  for (const asset of params.assets) {
+    for (const target of params.targets) {
+      if (asset instanceof Asset && target.toString().charAt(0) === "G") {
+        if (asset.getAssetType() === "liquidity_pool_shares") {
+          throw new Error("Classic Liquidity pool shares are not supported by this library");
+        }
+
+        if (asset.isNative()) {
+          results.push(xdr.LedgerKey.account(
             new xdr.LedgerKeyAccount({
               accountId: xdr.PublicKey.publicKeyTypeEd25519(StrKey.decodeEd25519PublicKey(target.toString())),
             }),
-          );
+          ));
         } else {
-          return xdr.LedgerKey.trustline(
+          results.push(xdr.LedgerKey.trustline(
             new xdr.LedgerKeyTrustLine({
               accountId: xdr.PublicKey.publicKeyTypeEd25519(StrKey.decodeEd25519PublicKey(target.toString())),
-              asset: params.asset.toTrustLineXDRObject(),
+              asset: asset.toTrustLineXDRObject(),
             }),
-          );
+          ));
         }
       } else {
-        return xdr.LedgerKey.contractData(
+        results.push(xdr.LedgerKey.contractData(
           new xdr.LedgerKeyContractData({
-            contract: new Address(params.contractId).toScAddress(),
-            key: xdr.ScVal.scvVec([
-              xdr.ScVal.scvSymbol("Balance"),
-              target.toScVal(),
-            ]),
+            contract: asset instanceof Asset
+              ? new Address(asset.contractId(params.networks)).toScAddress()
+              : asset.address().toScAddress(),
+            key: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Balance"), target.toScVal()]),
             durability: xdr.ContractDataDurability.persistent(),
           }),
-        );
+        ));
       }
-    },
-  );
+    }
+  }
+
+  return results.flat();
 }
 
 export function parseBalanceLedgerKeys(params: {
+  cachedAssets: Map<string, Asset | Contract>;
   entries: rpc.Api.LedgerEntryResult[];
   network: Networks;
 }): IBalanceResult[] {
@@ -56,26 +64,61 @@ export function parseBalanceLedgerKeys(params: {
     (entry: rpc.Api.LedgerEntryResult) => {
       switch (entry.val.switch().name) {
         case "account": {
-          const address: string = StrKey.encodeEd25519PublicKey(entry.val.account().accountId().ed25519());
+          const val: xdr.AccountEntry = entry.val.account();
+          const address: string = StrKey.encodeEd25519PublicKey(val.accountId().ed25519());
+          const trustLine: IBalanceResult["trustLine"] = val.ext().switch() === 0
+            ? {
+              balance: val.balance().toBigInt(),
+              buying: 0n,
+              selling: 0n,
+            }
+            : {
+              balance: val.balance().toBigInt(),
+              buying: val.ext().v1().liabilities().buying().toBigInt(),
+              selling: val.ext().v1().liabilities().selling().toBigInt(),
+            };
+
+          // Here we calculate the min amount of XLMs the account must hold and so are not part of the usable balance.
+          let minimumBase: bigint = 2n * (10n ** 7n);
+          minimumBase += BigInt(val.numSubEntries()) * (10n ** 7n);
+          if (val.ext().switch() === 1) {
+            if (val.ext().v1().ext().switch() === 2) {
+              const v2: xdr.AccountEntryExtensionV2 = val.ext().v1().ext().v2();
+              minimumBase += BigInt(v2.numSponsoring()) * (10n ** 7n);
+              minimumBase -= BigInt(v2.numSponsored()) * (10n ** 7n);
+            }
+          }
+          minimumBase = minimumBase / 2n;
+
           return {
             address,
             contract: Asset.native().contractId(params.network),
-            balance: {
-              clawback: false,
-              authorized: true,
-              amount: entry.val.account().balance().toBigInt(),
-            },
-          };
+            balance: val.balance().toBigInt() - minimumBase - trustLine.selling,
+            isClassic: true,
+            trustLine,
+          } satisfies IBalanceResult;
         }
 
         case "trustline": {
-          const address: string = StrKey.encodeEd25519PublicKey(entry.val.trustLine().accountId().ed25519());
-          let contract: string;
+          const val: xdr.TrustLineEntry = entry.val.trustLine();
+          const address: string = StrKey.encodeEd25519PublicKey(val.accountId().ed25519());
+          const trustLine: IBalanceResult["trustLine"] = val.ext().switch() === 0
+            ? {
+              balance: val.balance().toBigInt(),
+              buying: 0n,
+              selling: 0n,
+            }
+            : {
+              balance: val.balance().toBigInt(),
+              buying: val.ext().v1().liabilities().buying().toBigInt(),
+              selling: val.ext().v1().liabilities().selling().toBigInt(),
+            };
 
-          switch (entry.val.trustLine().asset().switch().name) {
+          let contract: string;
+          switch (val.asset().switch().name) {
             case "assetTypeCreditAlphanum4":
             case "assetTypeCreditAlphanum12": {
-              const assetXdr = entry.val.trustLine().asset().value() as (xdr.AlphaNum4 | xdr.AlphaNum12);
+              const assetXdr: xdr.AlphaNum4 | xdr.AlphaNum12 = val.asset().value() as (xdr.AlphaNum4 | xdr.AlphaNum12);
               const asset: Asset = new Asset(
                 assetXdr.assetCode().toString("utf8"),
                 StrKey.encodeEd25519PublicKey(assetXdr.issuer().ed25519()),
@@ -87,8 +130,6 @@ export function parseBalanceLedgerKeys(params: {
             case "assetTypeNative":
             case "assetTypePoolShare":
             default:
-              console.debug("Key:", entry.key.toXDR("base64"));
-              console.debug("Value:", entry.val.toXDR("base64"));
               throw new Error(
                 "Unsopported type of asset found, please contact the creator of the Stellar Assets SDK library.",
               );
@@ -97,34 +138,28 @@ export function parseBalanceLedgerKeys(params: {
           return {
             address,
             contract,
-            balance: {
-              clawback: false,
-              authorized: true,
-              amount: entry.val.trustLine().balance().toBigInt(),
-            },
-          };
+            balance: val.balance().toBigInt() - trustLine.selling,
+            isClassic: true,
+            trustLine,
+          } satisfies IBalanceResult;
         }
 
         case "contractData": {
           const contract: string = StrKey.encodeContract(entry.key.contractData().contract().contractId());
           const address: string = scValToNative(entry.key.contractData().key())[1];
           let balance = scValToNative(entry.val.contractData().val());
+          balance = typeof balance === "bigint" ? balance : balance.amount;
 
-          if (typeof balance === "bigint") {
-            balance = {
-              clawback: false,
-              authorized: true,
-              amount: balance,
-            };
-          } else {
-            balance = {
-              clawback: balance.clawback || false,
-              authorized: balance.clawback || true,
-              amount: balance.amount,
-            };
-          }
+          const cachedAsset: Asset | Contract | undefined = params.cachedAssets.get(contract);
+          if (!cachedAsset) throw new Error(`Asset ${contract} has not been cached, please contact support.`);
 
-          return { address, contract, balance };
+          return {
+            address,
+            contract,
+            balance,
+            isClassic: cachedAsset instanceof Asset,
+            trustLine: null,
+          } satisfies IBalanceResult;
         }
 
         default:

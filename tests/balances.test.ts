@@ -1,4 +1,4 @@
-import { describe, it } from "@std/testing/bdd";
+import { beforeAll, describe, it } from "@std/testing/bdd";
 import { assertEquals } from "@std/assert";
 import {
   Account,
@@ -18,7 +18,6 @@ const XlmContract: Contract = new Contract("CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ3
 const UsdcContract: Contract = new Contract("CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75");
 const account: Account = new Account("GBAIA5U6E3FSRUW55AXACIVGX2QR5JYAS74OWLED3S22EGXVYEHPLGPA", "0");
 const rpcUrl: string = "https://mainnet.sorobanrpc.com";
-const sdk: StellarAssetsSdk = new StellarAssetsSdk({ rpcUrl });
 
 async function simTx(
   contract: Contract,
@@ -43,6 +42,12 @@ async function simTx(
 }
 
 describe("Test method 'balance'", () => {
+  let sdk: StellarAssetsSdk;
+
+  beforeAll(() => {
+    sdk = new StellarAssetsSdk({ rpcUrl });
+  });
+
   it("should fetch the native balance owned by a Stellar account", async (): Promise<void> => {
     const simBalance: bigint = await simTx(XlmContract, "balance", [
       new Address(account.accountId()).toScVal(),
@@ -54,7 +59,7 @@ describe("Test method 'balance'", () => {
       account.accountId(),
     );
 
-    assertEquals(result.balance, simBalance);
+    assertEquals(result.trustLine!.balance, simBalance);
   });
 
   it("should fetch the non-native balance owned by a stellar account", async (): Promise<void> => {
@@ -100,6 +105,12 @@ describe("Test method 'balance'", () => {
 });
 
 describe("Test method 'balances", () => {
+  let sdk: StellarAssetsSdk;
+
+  beforeAll(() => {
+    sdk = new StellarAssetsSdk({ rpcUrl });
+  });
+
   it("should fetch the correct balances for multiple accounts and contracts", async () => {
     const tick: number = performance.now();
     const balances: IBalanceResult[] = await sdk.balances([{
@@ -109,13 +120,13 @@ describe("Test method 'balances", () => {
     const tock: number = performance.now();
     console.log(`Fetching 6 balances took: ${(tock - tick).toFixed(2)}ms`);
 
-    for (const { contract, address, balance } of balances) {
+    for (const { contract, address, balance, trustLine } of balances) {
       const simBalance: bigint = await simTx(new Contract(contract), "balance", [
         new Address(address).toScVal(),
       ])
         .then((sim) => scValToBigInt(sim.result!.retval));
 
-      assertEquals(simBalance, balance);
+      assertEquals(simBalance, trustLine ? trustLine.balance : balance);
     }
   });
 });
