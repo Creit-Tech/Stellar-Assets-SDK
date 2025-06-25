@@ -185,6 +185,8 @@ export class StellarAssetsSdk {
       });
     }
 
+    if (invocations.length === 0) return;
+
     const simResponse: string[] = await this.routerSdk.simResult<string[]>(invocations);
 
     let i: number = 0;
