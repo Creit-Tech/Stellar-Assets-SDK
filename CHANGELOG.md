@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## 0.3.0 (2025-06-25)
+
+### Change
+
+- Return to using ledger keys instead of simulations of the contracts
+- `IBalanceResult` now include more values to make the identification of classic assets and real available balances easier
+
 ## 0.2.1 (2025-04-25)
 
 ### Change
