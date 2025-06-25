@@ -45,10 +45,14 @@ with an RPC url and you are good to go. You can check all the methods available 
 import { StellarAssetsSdk } from "@creit-tech/stellar-assets-sdk";
 
 const assetsSDK = new StellarAssetsSdk({ rpcUrl: "RPC_URL" });
-const balance = await assetsSDK.balance("CONTRACT_ID", "ADDRESS");
+const result = await assetsSDK.balance("CONTRACT_ID", "ADDRESS");
 
-console.log(balance.amount); // 1550000000n
+console.log(result.balance); // 1550000000n
 ```
+
+## Classic assets and G accounts
+
+Something you might have noticed while interacting with the RPC, is that if you directly simulate the balance of a classic asset (for example USDC) you will get an amount the user not always can use, why is that? Well that's because the user might have offers on the classic side and that will reduce the available spendable balance. For those cases, this library will give you the real number while also giving you the option to read the full value under the `trustLine` value returned in the `balance` method's response.
 
 ## License
 

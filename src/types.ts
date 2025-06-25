@@ -10,12 +10,12 @@ export interface IBalanceResult {
   contract: string;
 
   /**
-   * The balance held by the `address` which can be used
+   * The balance held by the `address` that can be spent by a contract
    */
   balance: bigint;
 
   /**
-   * In the case the balance comes from a classic asset, this will be set to true (this also includes the classic asset)
+   * In the case the balance comes from a classic asset, this will be set to true (this also includes the native asset)
    */
   isClassic: boolean;
 
