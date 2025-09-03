@@ -120,7 +120,7 @@ export function parseBalanceLedgerKeys(params: {
             case "assetTypeCreditAlphanum12": {
               const assetXdr: xdr.AlphaNum4 | xdr.AlphaNum12 = val.asset().value() as (xdr.AlphaNum4 | xdr.AlphaNum12);
               const asset: Asset = new Asset(
-                assetXdr.assetCode().toString("utf8").replace(new RegExp('\0', 'g'), ''),
+                assetXdr.assetCode().toString("utf8").replace(new RegExp("\0", "g"), ""),
                 StrKey.encodeEd25519PublicKey(assetXdr.issuer().ed25519()),
               );
               contract = asset.contractId(params.network);
@@ -145,7 +145,9 @@ export function parseBalanceLedgerKeys(params: {
         }
 
         case "contractData": {
-          const contract: string = StrKey.encodeContract(entry.key.contractData().contract().contractId());
+          // StrKey.encodeContract receives a Buffer, but because the contractId() returned value is Opaque[] it gives a typing error.
+          // deno-lint-ignore no-explicit-any
+          const contract: string = StrKey.encodeContract(entry.key.contractData().contract().contractId() as any);
           const address: string = scValToNative(entry.key.contractData().key())[1];
           let balance = scValToNative(entry.val.contractData().val());
           balance = typeof balance === "bigint" ? balance : balance.amount;

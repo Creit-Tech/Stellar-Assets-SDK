@@ -1,5 +1,5 @@
-import { Address, Asset, Contract, Horizon, Networks, rpc, scValToNative, StrKey, xdr } from "@stellar/stellar-sdk";
-import { type Invocation, StellarRouterSdk } from "@creit-tech/stellar-router-sdk";
+import { Address, Asset, Contract, type Networks, rpc, StrKey, type xdr } from "@stellar/stellar-sdk";
+import { InvocationV0, StellarRouterContract, StellarRouterSdk } from "@creit-tech/stellar-router-sdk";
 import type { IBalanceResult } from "./types.ts";
 import { generateBalanceLedgerKeys, parseBalanceLedgerKeys } from "./utils.ts";
 
@@ -21,7 +21,10 @@ export class StellarAssetsSdk {
     routerContract?: string;
     networkPassphrase?: Networks;
   }) {
-    this.routerSdk = new StellarRouterSdk({ rpcUrl: params.rpcUrl, routerContract: params.routerContract });
+    this.routerSdk = new StellarRouterSdk({
+      rpcUrl: params.rpcUrl,
+      routerContract: params.routerContract || StellarRouterContract.v0,
+    });
     this.rpc = new rpc.Server(params.rpcUrl, { allowHttp: !!params.allowHttp });
     this.networkPassphrase = params.networkPassphrase;
   }
@@ -158,13 +161,15 @@ export class StellarAssetsSdk {
     });
 
     // We remove the native asset it's in the list
-    const invocations: Invocation[] = [];
+    const invocations: InvocationV0[] = [];
     for (const id of filteredIds) {
-      invocations.push({
-        contract: id,
-        method: "name",
-        args: [],
-      });
+      invocations.push(
+        new InvocationV0({
+          contract: id,
+          method: "name",
+          args: [],
+        }),
+      );
     }
 
     if (invocations.length === 0) return;

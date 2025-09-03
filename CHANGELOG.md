@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file. See
 
 ### Fix
 
-- Remove "\x00" (null) values from the asset code when converting the XDR to string 
+- Remove "\x00" (null) values from the asset code when converting the XDR to string
 
 ## 0.3.1 (2025-06-25)
 
@@ -26,7 +26,8 @@ All notable changes to this project will be documented in this file. See
 ### Change
 
 - Return to using ledger keys instead of simulations of the contracts
-- `IBalanceResult` now include more values to make the identification of classic assets and real available balances easier
+- `IBalanceResult` now include more values to make the identification of classic assets and real available balances
+  easier
 
 ## 0.2.1 (2025-04-25)
 
