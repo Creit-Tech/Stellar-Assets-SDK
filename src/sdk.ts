@@ -1,4 +1,4 @@
-import { Address, Asset, Contract, type Networks, rpc, StrKey, type xdr } from "@stellar/stellar-sdk";
+import { Address, Asset, Contract, type Networks, rpc, scValToNative, StrKey, xdr } from "@stellar/stellar-sdk";
 import { InvocationV0, StellarRouterContract, StellarRouterSdk } from "@creit-tech/stellar-router-sdk";
 import type { IBalanceResult } from "./types.ts";
 import { generateBalanceLedgerKeys, parseBalanceLedgerKeys } from "./utils.ts";
@@ -82,6 +82,51 @@ export class StellarAssetsSdk {
 
     return Array.isArray(addresses) ? balances : balances[0];
   }
+
+  async fetchOwnedNFTs(contractId: string | Address, address: string): Promise<number[]> {
+    const [supply] = await this.routerSdk.simResult<number[]>([new InvocationV0({
+      contract: contractId,
+      method: 'total_supply',
+      args: [],
+    })]);
+
+    const ledgerKeysGroups: xdr.LedgerKey[] = [];
+
+    for (let i = 1; i <= supply; i++) {
+      ledgerKeysGroups.push(xdr.LedgerKey.contractData(
+        new xdr.LedgerKeyContractData({
+          contract: typeof contractId === 'string' ? new Address(contractId).toScAddress() : contractId.toScAddress(),
+          key: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Owner"), xdr.ScVal.scvU32(i)]),
+          durability: xdr.ContractDataDurability.persistent(),
+        }),
+      ));
+    }
+
+    const results: rpc.Api.LedgerEntryResult[] = [];
+    while (ledgerKeysGroups.length > 0) {
+      const chunk: xdr.LedgerKey[] = ledgerKeysGroups.splice(0, 200);
+      const result: rpc.Api.GetLedgerEntriesResponse = await this.rpc.getLedgerEntries(...chunk);
+      for (const entry of result.entries) {
+        results.push(entry);
+      }
+    }
+
+    const entries: Array<{ id: number; owner: string; }> = [];
+    for (const result of results) {
+      const key = scValToNative(result.key.contractData().key());
+      entries.push({ id: key[1], owner: scValToNative(result.val.contractData().val()) });
+    }
+
+    const filteredEntries: number[] = [];
+    for (const entry of entries) {
+      if (entry.owner === address) {
+        filteredEntries.push(entry.id);
+      }
+    }
+
+    return filteredEntries;
+  }
+
 
   /**
    * An "extension" to the `balance` method, this one accepts an array with the contracts ids and target addresses instead of just one contract like with the `balance` method.

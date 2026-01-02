@@ -150,7 +150,7 @@ export function parseBalanceLedgerKeys(params: {
           const contract: string = StrKey.encodeContract(entry.key.contractData().contract().contractId() as any);
           const address: string = scValToNative(entry.key.contractData().key())[1];
           let balance = scValToNative(entry.val.contractData().val());
-          balance = typeof balance === "bigint" ? balance : balance.amount;
+          balance = typeof balance === "object" ? balance.amount : BigInt(balance);
 
           const cachedAsset: Asset | Contract | undefined = params.cachedAssets.get(contract);
           if (!cachedAsset) throw new Error(`Asset ${contract} has not been cached, please contact support.`);

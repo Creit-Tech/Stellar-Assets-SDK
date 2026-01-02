@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file. See
 [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## 0.3.4 (2025-06-25)
+
+### add
+
+- Include method `fetchOwnedNFTs` for SEP-0050 based assets, it assumes the asset uses the same `Balance(Address)` key SEP-0041
+
 ## 0.3.3 (2025-06-25)
 
 ### Change
