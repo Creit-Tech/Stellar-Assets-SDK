@@ -16,7 +16,7 @@ export class StellarAssetsSdk {
    * @param params
    */
   constructor(params: {
-    rpcUrl: string;
+    rpcUrl?: string;
     allowHttp?: boolean;
     routerContract?: string;
     networkPassphrase?: Networks;
@@ -25,7 +25,7 @@ export class StellarAssetsSdk {
       rpcUrl: params.rpcUrl,
       routerContract: params.routerContract || StellarRouterContract.v0,
     });
-    this.rpc = new rpc.Server(params.rpcUrl, { allowHttp: !!params.allowHttp });
+    this.rpc = new rpc.Server(params.rpcUrl || "https://rpc.lightsail.network", { allowHttp: !!params.allowHttp });
     this.networkPassphrase = params.networkPassphrase;
   }
 
@@ -83,20 +83,21 @@ export class StellarAssetsSdk {
     return Array.isArray(addresses) ? balances : balances[0];
   }
 
-  async fetchOwnedNFTs(contractId: string | Address, address: string): Promise<number[]> {
-    const [supply] = await this.routerSdk.simResult<number[]>([new InvocationV0({
-      contract: contractId,
-      method: 'total_supply',
-      args: [],
-    })]);
-
+  /**
+   * This method will fetch all NFTs owners for the tokens ids provided
+   * Note: This method requires
+   */
+  async ownerOf(
+    contractId: string | Address,
+    ids: Array<number | string>,
+  ): Promise<Array<{ id: number; owner: string }>> {
     const ledgerKeysGroups: xdr.LedgerKey[] = [];
 
-    for (let i = 1; i <= supply; i++) {
+    for (const id of ids) {
       ledgerKeysGroups.push(xdr.LedgerKey.contractData(
         new xdr.LedgerKeyContractData({
-          contract: typeof contractId === 'string' ? new Address(contractId).toScAddress() : contractId.toScAddress(),
-          key: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Owner"), xdr.ScVal.scvU32(i)]),
+          contract: typeof contractId === "string" ? new Address(contractId).toScAddress() : contractId.toScAddress(),
+          key: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Owner"), xdr.ScVal.scvU32(Number(id))]),
           durability: xdr.ContractDataDurability.persistent(),
         }),
       ));
@@ -111,14 +112,33 @@ export class StellarAssetsSdk {
       }
     }
 
-    const entries: Array<{ id: number; owner: string; }> = [];
+    const entries: Array<{ id: number; owner: string }> = [];
     for (const result of results) {
       const key = scValToNative(result.key.contractData().key());
       entries.push({ id: key[1], owner: scValToNative(result.val.contractData().val()) });
     }
 
+    return entries;
+  }
+
+  async fetchOwnedNFTs(contractId: string | Address, address: string): Promise<number[]> {
+    const [supply] = await this.routerSdk.simResult<number[]>([
+      new InvocationV0({
+        contract: contractId,
+        method: "total_supply",
+        args: [],
+      }),
+    ]);
+
+    const result: Array<{ id: number; owner: string }> = await this.ownerOf(
+      contractId,
+      new Array(supply)
+        .fill(undefined)
+        .map((_, i: number) => i + 1),
+    );
+
     const filteredEntries: number[] = [];
-    for (const entry of entries) {
+    for (const entry of result) {
       if (entry.owner === address) {
         filteredEntries.push(entry.id);
       }
@@ -126,7 +146,6 @@ export class StellarAssetsSdk {
 
     return filteredEntries;
   }
-
 
   /**
    * An "extension" to the `balance` method, this one accepts an array with the contracts ids and target addresses instead of just one contract like with the `balance` method.
