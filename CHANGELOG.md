@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file. See
 [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## 0.3.6 (2025-06-15)
+
+### change
+
+- Update the Stellar SDK
+
 ## 0.3.5 (2025-01-06)
 
 ### add
