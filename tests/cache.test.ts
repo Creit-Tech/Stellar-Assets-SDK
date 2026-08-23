@@ -10,20 +10,23 @@ describe("Test the assets cache logic", () => {
 
   beforeEach(() => {
     sdk = new StellarAssetsSdk({
-      rpcUrl: "https://mainnet.sorobanrpc.com",
-      networkPassphrase: Networks.PUBLIC
+      rpcUrl: "https://rpc.lightsail.network",
+      networkPassphrase: Networks.PUBLIC,
     });
   });
 
-  it('should fetch the network if is undefined, after is set it should skip that', async () => {
+  it("should fetch the network if is undefined, after is set it should skip that", async () => {
     sdk.networkPassphrase = undefined;
     const mock = stub(
       sdk.rpc,
       "getNetwork",
-      () => Promise.resolve({
-        passphrase: Networks.PUBLIC,
-        protocolVersion: '22'
-      } satisfies rpc.Api.GetNetworkResponse),
+      () =>
+        Promise.resolve(
+          {
+            passphrase: Networks.PUBLIC,
+            protocolVersion: "22",
+          } satisfies rpc.Api.GetNetworkResponse,
+        ),
     );
 
     await sdk.cacheAssets([Asset.native().contractId(Networks.PUBLIC)]);
@@ -35,9 +38,9 @@ describe("Test the assets cache logic", () => {
       {
         returned: {
           passphrase: Networks.PUBLIC,
-          protocolVersion: '22'
-        } satisfies rpc.Api.GetNetworkResponse
-      }
+          protocolVersion: "22",
+        } satisfies rpc.Api.GetNetworkResponse,
+      },
     );
     assertSpyCalls(mock, 1);
   });
@@ -94,9 +97,9 @@ describe("Test the assets cache logic", () => {
     assertExists(sdk.cachedAssets.get(id));
   });
 
-  it('should skip the `cacheAssets` logic if all assets are already cached', async () => {
+  it("should skip the `cacheAssets` logic if all assets are already cached", async () => {
     const id: string = Asset.native().contractId(Networks.PUBLIC);
-    const simSpy = spy(sdk.routerSdk, 'simResult');
+    const simSpy = spy(sdk.routerSdk, "simResult");
     await sdk.cacheAssets([id]);
     assertSpyCalls(simSpy, 0);
   });

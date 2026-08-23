@@ -17,7 +17,7 @@ import type { IBalanceResult } from "../src/types.ts";
 const XlmContract: Contract = new Contract("CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA");
 const UsdcContract: Contract = new Contract("CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75");
 const account: Account = new Account("GBAIA5U6E3FSRUW55AXACIVGX2QR5JYAS74OWLED3S22EGXVYEHPLGPA", "0");
-const rpcUrl: string = "https://mainnet.sorobanrpc.com";
+const rpcUrl: string = "https://rpc.lightsail.network";
 
 async function simTx(
   contract: Contract,
@@ -100,6 +100,19 @@ describe("Test method 'balance'", () => {
       .then((sim) => scValToBigInt(sim.result!.retval));
 
     const result: IBalanceResult = await sdk.balance(usdxUsdcPool, contractHolder);
+    assertEquals(result.balance, simBalance);
+  });
+
+  it("should fetch Soroban native assets", async (): Promise<void> => {
+    const xSolvBTC: string = "CAUP7NFABXE5TJRL3FKTPMWRLC7IAXYDCTHQRFSCLR5TMGKHOOQO772J";
+    const pool: string = "CCNXGPE4AQCSNEBZO3XJDKKDI3CRLYMVS6UWBBTVDLALLWMJEXBORQ2A";
+
+    const simBalance: bigint = await simTx(new Contract(xSolvBTC), "balance", [
+      new Address(pool).toScVal(),
+    ])
+      .then((sim) => scValToBigInt(sim.result!.retval));
+
+    const result: IBalanceResult = await sdk.balance(xSolvBTC, pool);
     assertEquals(result.balance, simBalance);
   });
 });

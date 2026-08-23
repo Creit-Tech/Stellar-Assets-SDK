@@ -98,7 +98,7 @@ export class StellarAssetsSdk {
         new xdr.LedgerKeyContractData({
           contract: typeof contractId === "string" ? new Address(contractId).toScAddress() : contractId.toScAddress(),
           key: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Owner"), xdr.ScVal.scvU32(Number(id))]),
-          durability: xdr.ContractDataDurability.persistent(),
+          durability: xdr.ContractDataDurability.persistent,
         }),
       ));
     }
@@ -114,8 +114,10 @@ export class StellarAssetsSdk {
 
     const entries: Array<{ id: number; owner: string }> = [];
     for (const result of results) {
-      const key = scValToNative(result.key.contractData().key());
-      entries.push({ id: key[1], owner: scValToNative(result.val.contractData().val()) });
+      const keyContractData: xdr.LedgerKeyContractData = (result.key as xdr.LedgerKeyContractDataArm).contractData;
+      const valContractData: xdr.ContractDataEntry = (result.val as xdr.LedgerEntryDataContractData).contractData;
+      const key = scValToNative(keyContractData.key);
+      entries.push({ id: key[1], owner: scValToNative(valContractData.val) });
     }
 
     return entries;

@@ -12,7 +12,7 @@ describe("Test `generateBalanceLedgerKeys` function.", () => {
       targets: [new Address("GALAXYVOIDAOPZTDLHILAJQKCVVFMD4IKLXLSZV5YHO7VY74IWZILUTO")],
     });
 
-    assertEquals(ledgerKeys[0].switch().name, "account");
+    assertEquals(ledgerKeys[0].type, "account");
   });
 
   it("should correctly generate a contract data key for a C account and a native asset", () => {
@@ -22,7 +22,7 @@ describe("Test `generateBalanceLedgerKeys` function.", () => {
       targets: [new Address("CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA")],
     });
 
-    assertEquals(ledgerKeys[0].switch().name, "contractData");
+    assertEquals(ledgerKeys[0].type, "contractData");
   });
 
   it("should correctly generate a trust line ledger key for a G account and a non-native classic asset", () => {
@@ -32,7 +32,7 @@ describe("Test `generateBalanceLedgerKeys` function.", () => {
       targets: [new Address("GALAXYVOIDAOPZTDLHILAJQKCVVFMD4IKLXLSZV5YHO7VY74IWZILUTO")],
     });
 
-    assertEquals(ledgerKeys[0].switch().name, "trustline");
+    assertEquals(ledgerKeys[0].type, "trustline");
   });
 
   it("should correctly generate a contract data ledger key for a C account and a non-native classic asset", () => {
@@ -42,7 +42,7 @@ describe("Test `generateBalanceLedgerKeys` function.", () => {
       targets: [new Address("CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA")],
     });
 
-    assertEquals(ledgerKeys[0].switch().name, "contractData");
+    assertEquals(ledgerKeys[0].type, "contractData");
   });
 
   it("should correctly generate contract data ledger keys for both G accounts and C accounts for soroban assets", () => {
@@ -55,8 +55,8 @@ describe("Test `generateBalanceLedgerKeys` function.", () => {
       ],
     });
 
-    assertEquals(ledgerKeys[0].switch().name, "contractData");
-    assertEquals(ledgerKeys[1].switch().name, "contractData");
+    assertEquals(ledgerKeys[0].type, "contractData");
+    assertEquals(ledgerKeys[1].type, "contractData");
   });
 });
 
@@ -64,12 +64,12 @@ describe("Test `parseBalanceLedgerKeys` function.", () => {
   it("should correctly generate the XLM balance result for a G account that does not have liabilities", () => {
     const accountEntry: rpc.Api.LedgerEntryResult = {
       val: xdr.LedgerEntryData.account(
-        xdr.AccountEntry.fromXDR(
+        xdr.AccountEntry.fromXdr(
           "AAAAAExSZ7DJVwTOYoUxaaQmy30CVKXvy7XUemF+yOLUaooUAAAAAcFfs7YDA8ksAAABHAAAAAoAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAMAAAAAA28WGgAAAABoU2YJ",
           "base64",
         ),
       ),
-      key: xdr.LedgerKey.fromXDR("AAAAAAAAAAAWC+KuQMDn5mNZ0LAmChVqVg+IUu65Zr3B3frj/EWyhQ==", "base64"),
+      key: xdr.LedgerKey.fromXdr("AAAAAAAAAAAWC+KuQMDn5mNZ0LAmChVqVg+IUu65Zr3B3frj/EWyhQ==", "base64"),
     };
 
     const parsedBalances: IBalanceResult[] = parseBalanceLedgerKeys({
@@ -88,12 +88,12 @@ describe("Test `parseBalanceLedgerKeys` function.", () => {
   it("should correctly generate the XLM balance result for a G account with selling liabilities", () => {
     const accountEntry: rpc.Api.LedgerEntryResult = {
       val: xdr.LedgerEntryData.account(
-        xdr.AccountEntry.fromXDR(
+        xdr.AccountEntry.fromXdr(
           "AAAAAH3bLw+oKfE+LsWT89EUhRS/fiYSyqUHsiSieu7v8pi5AAAAKggR77AC1HM4ACW8VAAAAAcAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAEAAAAAAAAAAAAAACn8JjAJAAAAAgAAAAAAAAAAAAAAAAAAAAMAAAAAA3AwMQAAAABoWamA",
           "base64",
         ),
       ),
-      key: xdr.LedgerKey.fromXDR("AAAAAAAAAAAWC+KuQMDn5mNZ0LAmChVqVg+IUu65Zr3B3frj/EWyhQ==", "base64"),
+      key: xdr.LedgerKey.fromXdr("AAAAAAAAAAAWC+KuQMDn5mNZ0LAmChVqVg+IUu65Zr3B3frj/EWyhQ==", "base64"),
     };
 
     const parsedBalances: IBalanceResult[] = parseBalanceLedgerKeys({
@@ -114,22 +114,22 @@ describe("Test `parseBalanceLedgerKeys` function.", () => {
   it("should correctly generate the USDC balance result for a G account with and without selling liabilities", () => {
     const withoutSelling: rpc.Api.LedgerEntryResult = {
       val: xdr.LedgerEntryData.trustline(
-        xdr.TrustLineEntry.fromXDR(
+        xdr.TrustLineEntry.fromXdr(
           "AAAAAExSZ7DJVwTOYoUxaaQmy30CVKXvy7XUemF+yOLUaooUAAAAAVVTREMAAAAAO5kROA7+mIugqJAOsc/kTzZvfb6Ua+0HckD39iTfFcUAAAAEqG1Rh3//////////AAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAA",
           "base64",
         ),
       ),
-      key: xdr.LedgerKey.fromXDR("AAAAAAAAAAAWC+KuQMDn5mNZ0LAmChVqVg+IUu65Zr3B3frj/EWyhQ==", "base64"),
+      key: xdr.LedgerKey.fromXdr("AAAAAAAAAAAWC+KuQMDn5mNZ0LAmChVqVg+IUu65Zr3B3frj/EWyhQ==", "base64"),
     };
 
     const withSelling: rpc.Api.LedgerEntryResult = {
       val: xdr.LedgerEntryData.trustline(
-        xdr.TrustLineEntry.fromXDR(
+        xdr.TrustLineEntry.fromXdr(
           "AAAAADruSUMEodmVSpg2Yl3HIZ4Pl6BWo6HR7o5j6Ab0dDZUAAAAAVVTREMAAAAAO5kROA7+mIugqJAOsc/kTzZvfb6Ua+0HckD39iTfFcUAAAEkE6WAQX//////////AAAAAQAAAAEAAAB1GYcxnAAAAHO6S0RKAAAAAA==",
           "base64",
         ),
       ),
-      key: xdr.LedgerKey.fromXDR("AAAAAAAAAAAWC+KuQMDn5mNZ0LAmChVqVg+IUu65Zr3B3frj/EWyhQ==", "base64"),
+      key: xdr.LedgerKey.fromXdr("AAAAAAAAAAAWC+KuQMDn5mNZ0LAmChVqVg+IUu65Zr3B3frj/EWyhQ==", "base64"),
     };
 
     const parsedBalances: IBalanceResult[] = parseBalanceLedgerKeys({
@@ -152,12 +152,12 @@ describe("Test `parseBalanceLedgerKeys` function.", () => {
   it("should correctly generate the USDC balance result for a contract ", () => {
     const contractDataEntry: rpc.Api.LedgerEntryResult = {
       val: xdr.LedgerEntryData.contractData(
-        xdr.ContractDataEntry.fromXDR(
+        xdr.ContractDataEntry.fromXdr(
           "AAAAAAAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAXaQPGRDAbc6QF0OvETM1CdzVHsgJAW8rKkpp7lrotIZAAAAAQAAABEAAAABAAAAAwAAAA8AAAAGYW1vdW50AAAAAAAKAAAAAAAAAAAAAAAAWEsikwAAAA8AAAAKYXV0aG9yaXplZAAAAAAAAAAAAAEAAAAPAAAACGNsYXdiYWNrAAAAAAAAAAA=",
           "base64",
         ),
       ),
-      key: xdr.LedgerKey.fromXDR(
+      key: xdr.LedgerKey.fromXdr(
         "AAAABgAAAAGt785ZruUpaPdgYdSUwlJbdWWfpClqZfSZ7ynlZHfklgAAABAAAAABAAAAAgAAAA8AAAAHQmFsYW5jZQAAAAASAAAAAXaQPGRDAbc6QF0OvETM1CdzVHsgJAW8rKkpp7lrotIZAAAAAQ==",
         "base64",
       ),

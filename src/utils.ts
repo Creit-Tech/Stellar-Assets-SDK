@@ -34,7 +34,7 @@ export function generateBalanceLedgerKeys(params: {
           results.push(xdr.LedgerKey.trustline(
             new xdr.LedgerKeyTrustLine({
               accountId: xdr.PublicKey.publicKeyTypeEd25519(StrKey.decodeEd25519PublicKey(target.toString())),
-              asset: asset.toTrustLineXDRObject(),
+              asset: asset.toTrustLineXdrObject(),
             }),
           ));
         }
@@ -45,7 +45,7 @@ export function generateBalanceLedgerKeys(params: {
               ? new Address(asset.contractId(params.networks)).toScAddress()
               : asset.address().toScAddress(),
             key: xdr.ScVal.scvVec([xdr.ScVal.scvSymbol("Balance"), target.toScVal()]),
-            durability: xdr.ContractDataDurability.persistent(),
+            durability: xdr.ContractDataDurability.persistent,
           }),
         ));
       }
@@ -62,30 +62,29 @@ export function parseBalanceLedgerKeys(params: {
 }): IBalanceResult[] {
   return params.entries.map(
     (entry: rpc.Api.LedgerEntryResult) => {
-      switch (entry.val.switch().name) {
+      switch (entry.val.type) {
         case "account": {
-          const val: xdr.AccountEntry = entry.val.account();
-          const address: string = StrKey.encodeEd25519PublicKey(val.accountId().ed25519());
-          const trustLine: IBalanceResult["trustLine"] = val.ext().switch() === 0
+          const val: xdr.AccountEntry = entry.val.account;
+          const address: string = StrKey.encodeEd25519PublicKey(val.accountId.ed25519.toBytes());
+          const trustLine: IBalanceResult["trustLine"] = val.ext.type === "v0"
             ? {
-              balance: val.balance().toBigInt(),
+              balance: val.balance,
               buying: 0n,
               selling: 0n,
             }
             : {
-              balance: val.balance().toBigInt(),
-              buying: val.ext().v1().liabilities().buying().toBigInt(),
-              selling: val.ext().v1().liabilities().selling().toBigInt(),
+              balance: val.balance,
+              buying: val.ext.value.liabilities.buying,
+              selling: val.ext.value.liabilities.selling,
             };
 
           // Here we calculate the min amount of XLMs the account must hold and so are not part of the usable balance.
           let minimumBase: bigint = 2n * (10n ** 7n);
-          minimumBase += BigInt(val.numSubEntries()) * (10n ** 7n);
-          if (val.ext().switch() === 1) {
-            if (val.ext().v1().ext().switch() === 2) {
-              const v2: xdr.AccountEntryExtensionV2 = val.ext().v1().ext().v2();
-              minimumBase += BigInt(v2.numSponsoring()) * (10n ** 7n);
-              minimumBase -= BigInt(v2.numSponsored()) * (10n ** 7n);
+          minimumBase += BigInt(val.numSubEntries) * (10n ** 7n);
+          if (val.ext.type === "v1") {
+            if (val.ext.value.ext.type === "v2") {
+              minimumBase += BigInt(val.ext.value.ext.value.numSponsoring) * (10n ** 7n);
+              minimumBase -= BigInt(val.ext.value.ext.value.numSponsored) * (10n ** 7n);
             }
           }
           minimumBase = minimumBase / 2n;
@@ -93,35 +92,35 @@ export function parseBalanceLedgerKeys(params: {
           return {
             address,
             contract: Asset.native().contractId(params.network),
-            balance: val.balance().toBigInt() - minimumBase - trustLine.selling,
+            balance: val.balance - minimumBase - trustLine.selling,
             isClassic: true,
             trustLine,
           } satisfies IBalanceResult;
         }
 
         case "trustline": {
-          const val: xdr.TrustLineEntry = entry.val.trustLine();
-          const address: string = StrKey.encodeEd25519PublicKey(val.accountId().ed25519());
-          const trustLine: IBalanceResult["trustLine"] = val.ext().switch() === 0
+          const val: xdr.TrustLineEntry = entry.val.trustLine;
+          const address: string = StrKey.encodeEd25519PublicKey(val.accountId.ed25519.toBytes());
+          const trustLine: IBalanceResult["trustLine"] = val.ext.type === "v0"
             ? {
-              balance: val.balance().toBigInt(),
+              balance: val.balance,
               buying: 0n,
               selling: 0n,
             }
             : {
-              balance: val.balance().toBigInt(),
-              buying: val.ext().v1().liabilities().buying().toBigInt(),
-              selling: val.ext().v1().liabilities().selling().toBigInt(),
+              balance: val.balance,
+              buying: val.ext.value.liabilities.buying,
+              selling: val.ext.value.liabilities.selling,
             };
 
           let contract: string;
-          switch (val.asset().switch().name) {
+          switch (val.asset.type) {
             case "assetTypeCreditAlphanum4":
             case "assetTypeCreditAlphanum12": {
-              const assetXdr: xdr.AlphaNum4 | xdr.AlphaNum12 = val.asset().value() as (xdr.AlphaNum4 | xdr.AlphaNum12);
+              const assetXdr: xdr.AlphaNum4 | xdr.AlphaNum12 = val.asset.value;
               const asset: Asset = new Asset(
-                assetXdr.assetCode().toString("utf8").replace(new RegExp("\0", "g"), ""),
-                StrKey.encodeEd25519PublicKey(assetXdr.issuer().ed25519()),
+                new TextDecoder().decode(assetXdr.assetCode.toBytes()).replace(new RegExp("\0", "g"), ""),
+                StrKey.encodeEd25519PublicKey(assetXdr.issuer.ed25519.toBytes()),
               );
               contract = asset.contractId(params.network);
               break;
@@ -138,18 +137,18 @@ export function parseBalanceLedgerKeys(params: {
           return {
             address,
             contract,
-            balance: val.balance().toBigInt() - trustLine.selling,
+            balance: val.balance - trustLine.selling,
             isClassic: true,
             trustLine,
           } satisfies IBalanceResult;
         }
 
         case "contractData": {
-          // StrKey.encodeContract receives a Buffer, but because the contractId() returned value is Opaque[] it gives a typing error.
-          // deno-lint-ignore no-explicit-any
-          const contract: string = StrKey.encodeContract(entry.key.contractData().contract().contractId() as any);
-          const address: string = scValToNative(entry.key.contractData().key())[1];
-          let balance = scValToNative(entry.val.contractData().val());
+          const keyContractData: xdr.LedgerKeyContractData = (entry.key as xdr.LedgerKeyContractDataArm).contractData;
+          const contract: string = StrKey.encodeContract((keyContractData.contract.value as xdr.ContractId).toBytes());
+          const address: string = scValToNative(keyContractData.key)[1];
+          const valContractData: xdr.ContractDataEntry = entry.val.contractData;
+          let balance = scValToNative(valContractData.val);
           balance = typeof balance === "object" ? balance.amount : BigInt(balance);
 
           const cachedAsset: Asset | Contract | undefined = params.cachedAssets.get(contract);
@@ -165,7 +164,7 @@ export function parseBalanceLedgerKeys(params: {
         }
 
         default:
-          throw new Error(`Entry type: ${entry.val.switch().name} is not supported.`);
+          throw new Error(`Entry type: ${entry.val.type} is not supported.`);
       }
     },
   );
