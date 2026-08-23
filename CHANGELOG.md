@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## 0.4.0 (2026-08-22)
+
+### change
+
+- Refactor code to be compatible with latest Stellar SDK (v17)
+- Upgrade the Stellar Router SDK dependency
+
 ## 0.3.6 (2025-06-15)
 
 ### change
